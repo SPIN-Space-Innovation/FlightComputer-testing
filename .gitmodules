@@ -1,0 +1,3 @@
+[submodule "src/SPIN.Core"]
+	path = src/SPIN.Core
+	url = https://github.com/SPIN-Space-Innovation/SPIN.Core.git
