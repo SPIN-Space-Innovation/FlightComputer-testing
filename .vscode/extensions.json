@@ -3,5 +3,6 @@
         "ms-dotnettools.csharp",
         "ms-azuretools.vscode-docker",
         "eamodio.gitlens",
+        "editorconfig.editorconfig",
     ]
 }
