@@ -2,5 +2,6 @@
     "recommendations": [
         "ms-dotnettools.csharp",
         "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
     ]
 }
