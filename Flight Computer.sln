@@ -5,6 +5,8 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Flight Computer", "src\Flight Computer\Flight Computer.csproj", "{B00DCE7C-0E57-477F-87F0-D446ACC7C83D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SPIN.Core", "src\SPIN.Core\dotnet\SPIN.Core.csproj", "{525A3090-7554-4EC5-BB89-82E8E9548B3C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,5 +20,9 @@ Global
 		{B00DCE7C-0E57-477F-87F0-D446ACC7C83D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B00DCE7C-0E57-477F-87F0-D446ACC7C83D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B00DCE7C-0E57-477F-87F0-D446ACC7C83D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{525A3090-7554-4EC5-BB89-82E8E9548B3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{525A3090-7554-4EC5-BB89-82E8E9548B3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{525A3090-7554-4EC5-BB89-82E8E9548B3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{525A3090-7554-4EC5-BB89-82E8E9548B3C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
