@@ -1,9 +1,12 @@
-﻿using MediatR;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+
+using MediatR;
+
 using SPIN.Core.Contracts.Requests.Abstractions;
+using SPIN.Core.Contracts.Requests.Generic;
 using SPIN.Core.Contracts.Responses.Abstractions;
-using SPIN.Core.Installers.Abstractions;
+using IRequest = SPIN.Core.Contracts.Requests.Abstractions.IRequest;
 
 
 var configurationBuilder = new ConfigurationBuilder()
@@ -11,40 +14,18 @@ var configurationBuilder = new ConfigurationBuilder()
     .AddCommandLine(args);
 var configuration = configurationBuilder.Build();
 
-var serviceCollection = new ServiceCollection();
-serviceCollection.AddMediatR((cfg) =>
-{
-    cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
-    cfg.RegisterServicesFromAssembly(typeof(SPIN.Core.Contracts.Requests.Abstractions.ISensorRequest).Assembly);
-});
-
-var serviceTypes = typeof(IInstaller).Assembly.ExportedTypes
-    .Where(type => typeof(IInstaller).IsAssignableFrom(type) &&
-                   !type.IsInterface &&
-                   !type.IsAbstract)
-    .ToList();
-
-foreach (var serviceType in serviceTypes)
-{
-    var service = Activator.CreateInstance(serviceType) as IInstaller;
-    var serviceIsNull = service is null;
-    if (serviceIsNull)
+IServiceProvider serviceProvider = new ServiceCollection()
+    .AddMediatR(cfg =>
     {
-        continue;
-    }
-
-    var serviceCannotInstall = !service!.CanInstall;
-    if (serviceCannotInstall)
-    {
-        continue;
-    }
-
-    service.InstallService(serviceCollection, configuration);
-}
-
-var serviceProvider = serviceCollection.BuildServiceProvider();
+        cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
+        cfg.RegisterServicesFromAssembly(typeof(IRequest).Assembly);
+    })
+    .BuildServiceProvider();
 
 var mediator = serviceProvider.GetRequiredService<IMediator>();
+
+serviceProvider = await mediator.Send(new RegisterServicesRequest { Configuration = configuration });
+mediator = serviceProvider.GetRequiredService<IMediator>();
 
 var types = typeof(ISensorRequest).Assembly.ExportedTypes
     .Where(type => typeof(ISensorRequest).IsAssignableFrom(type) &&
@@ -52,14 +33,19 @@ var types = typeof(ISensorRequest).Assembly.ExportedTypes
                     !type.IsAbstract)
     .ToList();
 
-foreach(var type in types)
+while (true)
 {
-    var request = Activator.CreateInstance(type);
-    var response = await mediator.Send(request);
+    foreach(var type in types)
+    {
+        var request = Activator.CreateInstance(type);
+        var response = await mediator.Send(request);
 
-    var responseStatus = (SensorResponseStatus)response.GetType().GetProperty("Status").GetValue(response, null);
-    var responseValue = response.GetType().GetProperty("Value").GetValue(response, null);
+        var responseStatus = (SensorResponseStatus)response.GetType().GetProperty("Status").GetValue(response, null);
+        var responseValueType = response.GetType().GetProperty("Value").GetValue(response, null);
+        var responseValue = responseValueType?.GetType().GetProperty("_value").GetValue(responseValueType, null) as double?;
+        Console.WriteLine($"Response status is: {responseStatus}");
+        Console.WriteLine($"Response value is: {responseValue}");
+    }
 
-    Console.WriteLine($"Response status is: {responseStatus}");
-    Console.WriteLine($"Response value is: {responseValue ?? ""}");
+    Thread.Sleep(2000);
 }
