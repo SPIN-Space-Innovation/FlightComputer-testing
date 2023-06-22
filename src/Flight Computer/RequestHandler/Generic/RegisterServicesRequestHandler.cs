@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 using MediatR;
 
+using SPIN.Core.Contracts.Requests.Abstractions;
 using SPIN.Core.Contracts.Requests.Generic;
 using SPIN.Core.Installers.Abstractions;
 
@@ -9,43 +10,67 @@ namespace SPIN.FlightComputer.RequestHandler.Generic;
 
 public class RegisterServicesRequestHandler : IRequestHandler<RegisterServicesRequest, IServiceProvider>
 {
-    public async Task<IServiceProvider> Handle(RegisterServicesRequest request, CancellationToken cancellationToken)
+    private static Task RegisterMediatR(RegisterServicesRequest request,
+        IServiceCollection serviceCollection,
+        // ReSharper disable once UnusedParameter.Local
+        CancellationToken cancellationToken)
     {
-        var serviceCollection = new ServiceCollection();
-        serviceCollection.AddMediatR((cfg) =>
+        serviceCollection.AddMediatR(cfg =>
         {
-            cfg.RegisterServicesFromAssembly(typeof(Program).Assembly);
-            cfg.RegisterServicesFromAssembly(typeof(SPIN.Core.Contracts.Requests.Abstractions.IRequest).Assembly);
+            // ReSharper disable once HeapView.ObjectAllocation
+            cfg.RegisterServicesFromAssemblies(typeof(Program).Assembly, typeof(ISensorRequest).Assembly);
         });
 
-        var serviceTypes = typeof(IInstaller).Assembly.ExportedTypes
-            .Where(type => typeof(IInstaller).IsAssignableFrom(type) &&
-                           !type.IsInterface &&
-                           !type.IsAbstract)
-            .Select(Activator.CreateInstance)
-            .Cast<IInstaller>()
-            .OrderBy(type => type.Priority)
-            .ToList();
+        return Task.CompletedTask;
+    }
 
-        foreach (var service in serviceTypes)
+    private static async Task RegisterInstallableServices(RegisterServicesRequest request,
+        IServiceCollection serviceCollection,
+        // ReSharper disable once UnusedParameter.Local
+        CancellationToken cancellationToken)
+    {
+        var exportedTypes = typeof(IInstaller).Assembly.ExportedTypes;
+        var installersType = exportedTypes.Where(type =>
         {
-            var serviceIsNull = service is null;
-            if (serviceIsNull)
+            bool hasInheritedIInstaller = typeof(IInstaller).IsAssignableFrom(type);
+            bool isNotInterface = !type.IsInterface;
+            bool isNotAbstract = !type.IsAbstract;
+
+            return hasInheritedIInstaller && isNotInterface && isNotAbstract;
+        });
+        var installersInstance = installersType.Select(Activator.CreateInstance)
+            .Cast<IInstaller>();
+        installersInstance = installersInstance.OrderBy(type => type.Priority);
+        var installersInstanceList = installersInstance.ToList();
+
+        foreach (var installer in installersInstanceList)
+        {
+            bool installerIsNull = installer is null;
+            if (installerIsNull)
             {
                 continue;
             }
 
-            bool serviceCannotInstall = !service!.CanInstall(serviceCollection, request.Configuration);
-            if (serviceCannotInstall)
+            bool cannotInstallService = !await installer!.CanInstallAsync(serviceCollection, request.Configuration);
+            if (cannotInstallService)
             {
                 continue;
             }
 
-            service.InstallService(serviceCollection, request.Configuration);
+            await installer.InstallServiceAsync(serviceCollection, request.Configuration);
         }
+    }
+
+    public async Task<IServiceProvider> Handle(RegisterServicesRequest request, CancellationToken cancellationToken)
+    {
+        // ReSharper disable once HeapView.ObjectAllocation.Evident
+        var serviceCollection = new ServiceCollection();
+
+        await RegisterMediatR(request, serviceCollection, cancellationToken);
+
+        await RegisterInstallableServices(request, serviceCollection, cancellationToken);
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
-
         return serviceProvider;
     }
 }
